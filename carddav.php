@@ -312,6 +312,53 @@ class carddav_backend
 	}
 
 	/**
+	* Gets all vCards from the CardDAV server that have a matching substring in their FN property
+	*
+	* @param	string	$substring		Substring that must be contained in the FN property of the vCard
+	* @return	string 				Server response
+	*/
+	public function search_for_fn_match($substring)
+	{
+		$xml = new XMLWriter;
+		$xml->openMemory();
+		$xml->setIndent(4);
+		$xml->startDocument('1.0', 'utf-8');
+			$xml->startElement('C:addressbook-query');
+				$xml->writeAttribute('xmlns:D', 'DAV:');
+				$xml->writeAttribute('xmlns:C', 'urn:ietf:params:xml:ns:carddav');
+				$xml->startElement('D:prop');
+					$xml->writeElement('D:getetag');
+					$xml->writeElement('C:address-data');	
+				$xml->endElement();
+				$xml->startElement('C:filter');
+					$xml->startElement('C:prop-filter');
+						$xml->writeAttribute('name', 'FN');
+						$xml->startElement('C:text-match');
+							$xml->writeAttribute('collation', 'i;unicode-casemap');
+							$xml->writeAttribute('match-type', 'contains');
+							$xml->text($substring);
+						$xml->endElement();
+					$xml->endElement();
+				$xml->endElement();
+			$xml->endElement();
+		$xml->endDocument();
+
+		$result = $this->query($this->url, 'REPORT', $xml->outputMemory(), 'text/xml', array('Depth: 1'));
+
+		switch ($result['http_code'])
+		{
+			case 200:
+			case 207:
+				return $this->simplify($result['response'], true);	
+				break;
+
+                        default:
+                                throw new Exception('Woops, something\'s gone wrong! The CardDAV server returned the http status code ' . $result['http_code'] . '.', self::EXCEPTION_WRONG_HTTP_STATUS_CODE_GET_XML_VCARD);
+                        break;
+                }
+        }
+
+	/**
 	 * Gets a vCard + XML from the CardDAV Server
 	 *
 	 * @param	string		$vcard_id	vCard id on the CardDAV Server
@@ -591,9 +638,10 @@ class carddav_backend
 	 * @param	string	$method				HTTP method like (OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, COPY, MOVE)
 	 * @param	string	$content			Content for CardDAV queries
 	 * @param	string	$content_type		Set content type
+	 * @param	array	$custom_headers			Additional HTTP headers to set as part of the request
 	 * @return	array						Raw CardDAV Response and http status code
 	 */
-	private function query($url, $method, $content = null, $content_type = null)
+	private function query($url, $method, $content = null, $content_type = null, $custom_headers = array())
 	{
 		$this->curl_init();
 
@@ -613,11 +661,11 @@ class carddav_backend
 
 		if ($content_type !== null)
 		{
-			curl_setopt($this->curl, CURLOPT_HTTPHEADER, array('Content-type: '.$content_type));
+			curl_setopt($this->curl, CURLOPT_HTTPHEADER, array_merge(array('Content-type: '.$content_type), $custom_headers));
 		}
 		else
 		{
-			curl_setopt($this->curl, CURLOPT_HTTPHEADER, array());
+			curl_setopt($this->curl, CURLOPT_HTTPHEADER, $custom_headers);
 		}
 
 		$complete_response	= curl_exec($this->curl);
