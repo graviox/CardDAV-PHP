@@ -315,7 +315,7 @@ class carddav_backend
 	* Gets all vCards from the CardDAV server that have a matching substring in their FN property
 	*
 	* @param	string	$substring		Substring that must be contained in the FN property of the vCard
-	* @return	string 				Server response
+	* @return	array				An array of all vcards that the remote server returned. Any XML is already stripped, these are plain vcards.
 	*/
 	public function search_for_fn_match($substring)
 	{
@@ -349,7 +349,8 @@ class carddav_backend
 		{
 			case 200:
 			case 207:
-				return $this->simplify($result['response'], true);	
+				$xmlPayload = simplexml_load_string($this->simplify($result['response'], true));
+				return $xmlPayload->xpath('//vcard');
 				break;
 
                         default:
