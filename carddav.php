@@ -350,9 +350,9 @@ class carddav_backend
 			case 200:
 			case 207:
 				$xmlPayload = simplexml_load_string($this->simplify($result['response'], true));
-				return $xmlPayload->xpath('//vcard');
+				$toString = function($xml) { return strip_tags($xml->asXml()); };
+				return array_map($toString, $xmlPayload->xpath('//vcard'));
 				break;
-
                         default:
                                 throw new Exception('Woops, something\'s gone wrong! The CardDAV server returned the http status code ' . $result['http_code'] . '.', self::EXCEPTION_WRONG_HTTP_STATUS_CODE_GET_XML_VCARD);
                         break;
