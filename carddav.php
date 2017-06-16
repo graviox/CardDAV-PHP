@@ -350,7 +350,7 @@ class carddav_backend
 			case 200:
 			case 207:
 				$xmlPayload = simplexml_load_string($this->simplify($result['response'], true));
-				$toString = function($xml) { return strip_tags($xml->asXml()); };
+				$toString = function($xml) { return html_entity_decode(strip_tags($xml->asXml())); };
 				return array_map($toString, $xmlPayload->xpath('//vcard'));
 				break;
                         default:
