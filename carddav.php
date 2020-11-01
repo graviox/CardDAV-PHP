@@ -434,6 +434,7 @@ class carddav_backend
 		switch($result['http_code'])
 		{
 			case 201:
+			case 204:
 				return $vcard_id;
 			break;
 
